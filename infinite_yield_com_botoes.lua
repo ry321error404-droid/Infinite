@@ -12281,7 +12281,7 @@ task.spawn(function()
 	end
 end)
 
--- ===== BOTÕES PERSONALIZADOS SPAWNPOINT, INVISIBLE E VISIBLE =====
+-- ===== BOTÕES QUE EXECUTAM OS COMANDOS NATIVOS DO INFINITE YIELD =====
 local ButtonsFrame = Instance.new("Frame")
 ButtonsFrame.Name = "CustomButtonsFrame"
 ButtonsFrame.Parent = Dark
@@ -12297,7 +12297,7 @@ UIGridLayout.CellSize = UDim2.new(0, 78, 0, 25)
 UIGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 UIGridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
-local function createCustomButton(name, text, commandFunc)
+local function createCustomButton(name, text, commandStr)
 	local Button = Instance.new("TextButton")
 	Button.Name = name
 	Button.Parent = ButtonsFrame
@@ -12317,57 +12317,15 @@ local function createCustomButton(name, text, commandFunc)
 		Button.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
 	end)
 	
-	Button.MouseButton1Click:Connect(commandFunc)
+	Button.MouseButton1Click:Connect(function()
+		execCmd(commandStr, Players.LocalPlayer, true)
+	end)
 	return Button
 end
 
-createCustomButton("SpawnpointBtn", "Spawnpoint", function()
-	pcall(function()
-		if game.Players.LocalPlayer.Character then
-			local char = game.Players.LocalPlayer.Character
-			local root = char:FindFirstChild("HumanoidRootPart")
-			if root then
-				local spawnPos = root.Position
-				game.Players.LocalPlayer:SetAttribute("SpawnPos", spawnPos)
-				notify("Spawnpoint", "📍 Posição salva!")
-			end
-		end
-	end)
-end)
-
-createCustomButton("InvisibleBtn", "Invisível", function()
-	pcall(function()
-		local char = game.Players.LocalPlayer.Character
-		if char then
-			for _, part in pairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.Transparency = 1
-				end
-				if part:IsA("Decal") then
-					part.Transparency = 1
-				end
-			end
-			notify("Invisível", "👻 Você ficou invisível!")
-		end
-	end)
-end)
-
-createCustomButton("VisibleBtn", "Visível", function()
-	pcall(function()
-		local char = game.Players.LocalPlayer.Character
-		if char then
-			for _, part in pairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.Transparency = 0
-				end
-				if part:IsA("Decal") then
-					part.Transparency = 0
-				end
-			end
-			notify("Visível", "👁️ Você ficou visível novamente!")
-		end
-	end)
-end)
+createCustomButton("SpawnpointBtn", "Spawnpoint", "spawnpoint")
+createCustomButton("InvisibleBtn", "Invisível", "invisible")
+createCustomButton("VisibleBtn", "Visível", "visible")
 -- ===== FIM DOS BOTÕES =====
 
 task.spawn(function()
