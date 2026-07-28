@@ -1,0 +1,695 @@
+--[[
+    ═════════════════════════════════════════════════════════════════
+    SPAWNPOINT + INVISIBLE/VISIBLE ROBLOX - Script LocalScript Completo
+    ═════════════════════════════════════════════════════════════════
+    
+    Autor: Sistema de Teleporte e Visibilidade
+    Descrição: Spawnpoint + Invisible + Visible em um único script
+    
+    Features:
+    ✓ GUI moderna e responsiva
+    ✓ Drag and drop em mobile e PC
+    ✓ Minimizável
+    ✓ 3 Botões: Spawnpoint, Invisible, Visible
+    ✓ Toggle ON/OFF visual para cada um
+    ✓ Teleporte automático ao respawnar
+    ✓ Ficar invisível/visível
+    ✓ Sem dependências externas
+    ✓ Funciona em mobile e desktop
+    
+    ═════════════════════════════════════════════════════════════════
+]]
+
+-- ═══════════════════════════════════════════════════════════════════
+-- CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+-- ═══════════════════════════════════════════════════════════════════
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- Variáveis do Spawnpoint
+local spawnpoint_enabled = false
+local spawnpos = nil
+local spDelay = 0.1
+
+-- Variáveis de Invisibilidade
+local invisible_enabled = false
+local visible_enabled = false
+
+-- Variáveis da GUI
+local gui_parent = nil
+local main_gui = nil
+local is_dragging = false
+local drag_offset = Vector2.new(0, 0)
+local is_minimized = false
+
+-- Cores da interface
+local COLOR_PRIMARY = Color3.fromRGB(25, 25, 35)
+local COLOR_SECONDARY = Color3.fromRGB(35, 35, 45)
+local COLOR_ACCENT = Color3.fromRGB(0, 150, 255)
+local COLOR_ACCENT_HOVER = Color3.fromRGB(0, 180, 255)
+local COLOR_SUCCESS = Color3.fromRGB(50, 200, 50)
+local COLOR_DISABLED = Color3.fromRGB(100, 100, 100)
+local COLOR_TEXT = Color3.fromRGB(255, 255, 255)
+
+-- ═══════════════════════════════════════════════════════════════════
+-- FUNÇÕES AUXILIARES
+-- ═══════════════════════════════════════════════════════════════════
+
+-- Obter HumanoidRootPart de forma segura
+local function getHumanoidRootPart()
+    local character = player.Character
+    if not character then return nil end
+    return character:FindFirstChild("HumanoidRootPart")
+end
+
+-- Esperar o HumanoidRootPart estar pronto
+local function waitForHumanoidRootPart()
+    local character = player.Character
+    if not character then return false end
+    
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if root then return true end
+    
+    for i = 1, 50 do
+        wait(0.1)
+        root = character:FindFirstChild("HumanoidRootPart")
+        if root then return true end
+    end
+    
+    return false
+end
+
+-- Obter o character atual
+local function getCharacter()
+    return player.Character
+end
+
+-- Notificação na tela
+local function showNotification(title, message)
+    print("[Spawnpoint] " .. title .. ": " .. message)
+end
+
+-- ═══════════════════════════════════════════════════════════════════
+-- FUNÇÕES DO SPAWNPOINT
+-- ═══════════════════════════════════════════════════════════════════
+
+local function saveSpawnPoint()
+    local root = getHumanoidRootPart()
+    if not root then
+        showNotification("Erro", "Personagem não encontrado")
+        return false
+    end
+    
+    spawnpos = root.CFrame
+    spawnpoint_enabled = true
+    showNotification("Spawn Point", "Posição salva!")
+    return true
+end
+
+local function removeSpawnPoint()
+    spawnpoint_enabled = false
+    showNotification("Spawn Point", "Ponto de spawn removido")
+end
+
+local function teleportToSpawnPoint()
+    if not spawnpoint_enabled or not spawnpos then return end
+    
+    local root = getHumanoidRootPart()
+    if not root then return end
+    
+    wait(spDelay)
+    
+    local success = pcall(function()
+        root.CFrame = spawnpos
+    end)
+    
+    if success then
+        showNotification("Teleporte", "Teleportado para spawn point")
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════
+-- FUNÇÕES DE INVISIBILIDADE
+-- ═══════════════════════════════════════════════════════════════════
+
+local function makeCharacterInvisible()
+    local character = getCharacter()
+    if not character then return false end
+    
+    -- Proteger com pcall
+    local success = pcall(function()
+        -- Tornar todas as partes do personagem invisíveis
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 1
+            end
+            
+            -- Também remover textura de accessories
+            if part:IsA("Decal") then
+                part.Transparency = 1
+            end
+        end
+        
+        -- Fazer o humanoid também desaparecer
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid and humanoid:FindFirstChild("HumanoidDescription") then
+            humanoid.Health = humanoid.Health
+        end
+    end)
+    
+    if success then
+        invisible_enabled = true
+        visible_enabled = false
+        showNotification("Invisibilidade", "Você ficou invisível!")
+        return true
+    end
+    
+    return false
+end
+
+local function makeCharacterVisible()
+    local character = getCharacter()
+    if not character then return false end
+    
+    -- Proteger com pcall
+    local success = pcall(function()
+        -- Remover transparência de todas as partes
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                -- Restaurar para 0 (totalmente opaco)
+                part.Transparency = 0
+            end
+            
+            -- Restaurar decals
+            if part:IsA("Decal") then
+                part.Transparency = 0
+            end
+        end
+    end)
+    
+    if success then
+        invisible_enabled = false
+        visible_enabled = true
+        showNotification("Visibilidade", "Você ficou visível novamente!")
+        return true
+    end
+    
+    return false
+end
+
+-- ═══════════════════════════════════════════════════════════════════
+-- FUNÇÕES DA GUI
+-- ═══════════════════════════════════════════════════════════════════
+
+local function createMainGUI()
+    -- Screen GUI
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "SpawnpointGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndex = 999
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- FRAME PRINCIPAL
+    -- ───────────────────────────────────────────────────────────────
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Parent = screenGui
+    mainFrame.BackgroundColor3 = COLOR_PRIMARY
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Position = UDim2.new(0, 20, 0, 100)
+    mainFrame.Size = UDim2.new(0, 280, 0, 280)  -- Aumentado para 3 botões
+    mainFrame.ZIndex = 999
+    mainFrame.Active = true
+    mainFrame.Draggable = false
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = mainFrame
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = COLOR_SECONDARY
+    stroke.Thickness = 1
+    stroke.Parent = mainFrame
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- BARRA DE TÍTULO
+    -- ───────────────────────────────────────────────────────────────
+    
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Parent = mainFrame
+    titleBar.BackgroundColor3 = COLOR_SECONDARY
+    titleBar.BorderSizePixel = 0
+    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.ZIndex = 1000
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 8)
+    titleCorner.Parent = titleBar
+    
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "TitleLabel"
+    titleLabel.Parent = titleBar
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
+    titleLabel.Size = UDim2.new(1, -60, 1, 0)
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 14
+    titleLabel.TextColor3 = COLOR_TEXT
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Text = "🎯 Controles"
+    titleLabel.ZIndex = 1000
+    
+    -- Botão Minimizar
+    local minimizeButton = Instance.new("TextButton")
+    minimizeButton.Name = "MinimizeButton"
+    minimizeButton.Parent = titleBar
+    minimizeButton.BackgroundColor3 = COLOR_SECONDARY
+    minimizeButton.BorderSizePixel = 0
+    minimizeButton.Position = UDim2.new(1, -50, 0, 0)
+    minimizeButton.Size = UDim2.new(0, 25, 1, 0)
+    minimizeButton.Font = Enum.Font.GothamBold
+    minimizeButton.TextSize = 16
+    minimizeButton.TextColor3 = COLOR_TEXT
+    minimizeButton.Text = "−"
+    minimizeButton.ZIndex = 1001
+    minimizeButton.MouseEnter:Connect(function()
+        minimizeButton.BackgroundColor3 = COLOR_ACCENT
+    end)
+    minimizeButton.MouseLeave:Connect(function()
+        minimizeButton.BackgroundColor3 = COLOR_SECONDARY
+    end)
+    
+    -- Botão Fechar
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Parent = titleBar
+    closeButton.BackgroundColor3 = COLOR_SECONDARY
+    closeButton.BorderSizePixel = 0
+    closeButton.Position = UDim2.new(1, -25, 0, 0)
+    closeButton.Size = UDim2.new(0, 25, 1, 0)
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.TextSize = 16
+    closeButton.TextColor3 = COLOR_TEXT
+    closeButton.Text = "✕"
+    closeButton.ZIndex = 1001
+    closeButton.MouseEnter:Connect(function()
+        closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end)
+    closeButton.MouseLeave:Connect(function()
+        closeButton.BackgroundColor3 = COLOR_SECONDARY
+    end)
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- ÁREA DE CONTEÚDO
+    -- ───────────────────────────────────────────────────────────────
+    
+    local contentArea = Instance.new("Frame")
+    contentArea.Name = "ContentArea"
+    contentArea.Parent = mainFrame
+    contentArea.BackgroundColor3 = COLOR_PRIMARY
+    contentArea.BorderSizePixel = 0
+    contentArea.Position = UDim2.new(0, 0, 0, 30)
+    contentArea.Size = UDim2.new(1, 0, 1, -30)
+    contentArea.ZIndex = 999
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- BOTÃO 1: SPAWNPOINT
+    -- ───────────────────────────────────────────────────────────────
+    
+    local spawnpointButton = Instance.new("TextButton")
+    spawnpointButton.Name = "SpawnpointButton"
+    spawnpointButton.Parent = contentArea
+    spawnpointButton.BackgroundColor3 = COLOR_DISABLED
+    spawnpointButton.BorderSizePixel = 0
+    spawnpointButton.Position = UDim2.new(0, 10, 0, 8)
+    spawnpointButton.Size = UDim2.new(1, -20, 0, 45)
+    spawnpointButton.Font = Enum.Font.GothamBold
+    spawnpointButton.TextSize = 13
+    spawnpointButton.TextColor3 = COLOR_TEXT
+    spawnpointButton.Text = "Spawnpoint\n[OFF]"
+    spawnpointButton.ZIndex = 1000
+    
+    local buttonCorner1 = Instance.new("UICorner")
+    buttonCorner1.CornerRadius = UDim.new(0, 6)
+    buttonCorner1.Parent = spawnpointButton
+    
+    local buttonStroke1 = Instance.new("UIStroke")
+    buttonStroke1.Color = COLOR_SECONDARY
+    buttonStroke1.Thickness = 1
+    buttonStroke1.Parent = spawnpointButton
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- BOTÃO 2: INVISIBLE
+    -- ───────────────────────────────────────────────────────────────
+    
+    local invisibleButton = Instance.new("TextButton")
+    invisibleButton.Name = "InvisibleButton"
+    invisibleButton.Parent = contentArea
+    invisibleButton.BackgroundColor3 = COLOR_DISABLED
+    invisibleButton.BorderSizePixel = 0
+    invisibleButton.Position = UDim2.new(0, 10, 0, 58)
+    invisibleButton.Size = UDim2.new(1, -20, 0, 45)
+    invisibleButton.Font = Enum.Font.GothamBold
+    invisibleButton.TextSize = 13
+    invisibleButton.TextColor3 = COLOR_TEXT
+    invisibleButton.Text = "Invisible\n[OFF]"
+    invisibleButton.ZIndex = 1000
+    
+    local buttonCorner2 = Instance.new("UICorner")
+    buttonCorner2.CornerRadius = UDim.new(0, 6)
+    buttonCorner2.Parent = invisibleButton
+    
+    local buttonStroke2 = Instance.new("UIStroke")
+    buttonStroke2.Color = COLOR_SECONDARY
+    buttonStroke2.Thickness = 1
+    buttonStroke2.Parent = invisibleButton
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- BOTÃO 3: VISIBLE
+    -- ───────────────────────────────────────────────────────────────
+    
+    local visibleButton = Instance.new("TextButton")
+    visibleButton.Name = "VisibleButton"
+    visibleButton.Parent = contentArea
+    visibleButton.BackgroundColor3 = COLOR_DISABLED
+    visibleButton.BorderSizePixel = 0
+    visibleButton.Position = UDim2.new(0, 10, 0, 108)
+    visibleButton.Size = UDim2.new(1, -20, 0, 45)
+    visibleButton.Font = Enum.Font.GothamBold
+    visibleButton.TextSize = 13
+    visibleButton.TextColor3 = COLOR_TEXT
+    visibleButton.Text = "Visible\n[OFF]"
+    visibleButton.ZIndex = 1000
+    
+    local buttonCorner3 = Instance.new("UICorner")
+    buttonCorner3.CornerRadius = UDim.new(0, 6)
+    buttonCorner3.Parent = visibleButton
+    
+    local buttonStroke3 = Instance.new("UIStroke")
+    buttonStroke3.Color = COLOR_SECONDARY
+    buttonStroke3.Thickness = 1
+    buttonStroke3.Parent = visibleButton
+    
+    -- ═══════════════════════════════════════════════════════════════════
+    -- EVENTOS E LÓGICA DA GUI
+    -- ═══════════════════════════════════════════════════════════════════
+    
+    -- Atualizar visual dos botões
+    local function updateButtonVisuals()
+        -- Spawnpoint
+        if spawnpoint_enabled then
+            spawnpointButton.BackgroundColor3 = COLOR_SUCCESS
+            spawnpointButton.Text = "Spawnpoint\n[ON]"
+        else
+            spawnpointButton.BackgroundColor3 = COLOR_DISABLED
+            spawnpointButton.Text = "Spawnpoint\n[OFF]"
+        end
+        
+        -- Invisible
+        if invisible_enabled then
+            invisibleButton.BackgroundColor3 = COLOR_SUCCESS
+            invisibleButton.Text = "Invisible\n[ON]"
+        else
+            invisibleButton.BackgroundColor3 = COLOR_DISABLED
+            invisibleButton.Text = "Invisible\n[OFF]"
+        end
+        
+        -- Visible
+        if visible_enabled then
+            visibleButton.BackgroundColor3 = COLOR_SUCCESS
+            visibleButton.Text = "Visible\n[ON]"
+        else
+            visibleButton.BackgroundColor3 = COLOR_DISABLED
+            visibleButton.Text = "Visible\n[OFF]"
+        end
+    end
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- BOTÃO SPAWNPOINT
+    -- ───────────────────────────────────────────────────────────────
+    
+    spawnpointButton.MouseButton1Click:Connect(function()
+        if spawnpoint_enabled then
+            removeSpawnPoint()
+        else
+            saveSpawnPoint()
+        end
+        updateButtonVisuals()
+    end)
+    
+    spawnpointButton.MouseEnter:Connect(function()
+        if spawnpoint_enabled then
+            spawnpointButton.BackgroundColor3 = Color3.fromRGB(40, 220, 40)
+        else
+            spawnpointButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+        end
+    end)
+    
+    spawnpointButton.MouseLeave:Connect(function()
+        updateButtonVisuals()
+    end)
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- BOTÃO INVISIBLE
+    -- ───────────────────────────────────────────────────────────────
+    
+    invisibleButton.MouseButton1Click:Connect(function()
+        if invisible_enabled then
+            makeCharacterVisible()
+        else
+            makeCharacterInvisible()
+        end
+        updateButtonVisuals()
+    end)
+    
+    invisibleButton.MouseEnter:Connect(function()
+        if invisible_enabled then
+            invisibleButton.BackgroundColor3 = Color3.fromRGB(40, 220, 40)
+        else
+            invisibleButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+        end
+    end)
+    
+    invisibleButton.MouseLeave:Connect(function()
+        updateButtonVisuals()
+    end)
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- BOTÃO VISIBLE
+    -- ───────────────────────────────────────────────────────────────
+    
+    visibleButton.MouseButton1Click:Connect(function()
+        if visible_enabled then
+            invisible_enabled = false
+            visible_enabled = false
+        else
+            makeCharacterVisible()
+        end
+        updateButtonVisuals()
+    end)
+    
+    visibleButton.MouseEnter:Connect(function()
+        if visible_enabled then
+            visibleButton.BackgroundColor3 = Color3.fromRGB(40, 220, 40)
+        else
+            visibleButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+        end
+    end)
+    
+    visibleButton.MouseLeave:Connect(function()
+        updateButtonVisuals()
+    end)
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- DRAG AND DROP (Mobile e Desktop)
+    -- ───────────────────────────────────────────────────────────────
+    
+    titleBar.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            is_dragging = true
+            drag_offset = mouse.Position - mainFrame.AbsolutePosition
+        end
+    end)
+    
+    titleBar.InputEnded:Connect(function(input, gameProcessed)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            is_dragging = false
+        end
+    end)
+    
+    local touchConnection = nil
+    titleBar.TouchBegan:Connect(function(touch, gameProcessed)
+        if gameProcessed then return end
+        is_dragging = true
+        drag_offset = Vector2.new(touch.Position.X, touch.Position.Y) - mainFrame.AbsolutePosition
+        
+        if touchConnection then
+            touchConnection:Disconnect()
+        end
+        
+        touchConnection = RunService.InputChanged:Connect(function(input, gameProcessed)
+            if is_dragging and input.UserInputType == Enum.UserInputType.Touch then
+                local newPos = Vector2.new(input.Position.X, input.Position.Y) - drag_offset
+                mainFrame.Position = UDim2.new(0, newPos.X, 0, newPos.Y)
+            end
+        end)
+    end)
+    
+    titleBar.TouchEnded:Connect(function(touch, gameProcessed)
+        is_dragging = false
+        if touchConnection then
+            touchConnection:Disconnect()
+        end
+    end)
+    
+    RunService.InputChanged:Connect(function(input, gameProcessed)
+        if not is_dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            local newPos = mouse.Position - drag_offset
+            mainFrame.Position = UDim2.new(0, newPos.X, 0, newPos.Y)
+        end
+    end)
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- MINIMIZAR/RESTAURAR
+    -- ───────────────────────────────────────────────────────────────
+    
+    minimizeButton.MouseButton1Click:Connect(function()
+        if is_minimized then
+            contentArea:TweenSize(
+                UDim2.new(1, 0, 1, -30),
+                Enum.EasingDirection.Out,
+                Enum.EasingStyle.Quad,
+                0.2,
+                true
+            )
+            mainFrame:TweenSize(
+                UDim2.new(0, 280, 0, 280),
+                Enum.EasingDirection.Out,
+                Enum.EasingStyle.Quad,
+                0.2,
+                true
+            )
+            minimizeButton.Text = "−"
+            is_minimized = false
+        else
+            contentArea:TweenSize(
+                UDim2.new(1, 0, 0, 0),
+                Enum.EasingDirection.Out,
+                Enum.EasingStyle.Quad,
+                0.2,
+                true
+            )
+            mainFrame:TweenSize(
+                UDim2.new(0, 280, 0, 30),
+                Enum.EasingDirection.Out,
+                Enum.EasingStyle.Quad,
+                0.2,
+                true
+            )
+            minimizeButton.Text = "+"
+            is_minimized = true
+        end
+    end)
+    
+    -- ───────────────────────────────────────────────────────────────
+    -- FECHAR GUI
+    -- ───────────────────────────────────────────────────────────────
+    
+    closeButton.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+        removeSpawnPoint()
+        invisible_enabled = false
+        visible_enabled = false
+    end)
+    
+    -- Inicializar visual
+    updateButtonVisuals()
+    
+    return screenGui, mainFrame
+end
+
+-- ═══════════════════════════════════════════════════════════════════
+-- SISTEMA DE TELEPORTE AUTOMÁTICO
+-- ═══════════════════════════════════════════════════════════════════
+
+local function setupCharacterRespawn()
+    player.CharacterAdded:Connect(function(character)
+        if not waitForHumanoidRootPart() then
+            return
+        end
+        
+        local success = pcall(function()
+            if spawnpoint_enabled and spawnpos ~= nil then
+                wait(spDelay)
+                
+                local root = getHumanoidRootPart()
+                if root then
+                    root.CFrame = spawnpos
+                    showNotification("Teleporte", "Você foi teleportado para o spawn point!")
+                end
+            end
+        end)
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════════════
+-- INICIALIZAÇÃO
+-- ═══════════════════════════════════════════════════════════════════
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+if not player:FindFirstChild("PlayerGui") then
+    player:WaitForChild("PlayerGui")
+end
+
+print("[Spawnpoint] Criando interface...")
+main_gui, _ = createMainGUI()
+
+print("[Spawnpoint] Ativando sistema de teleporte automático...")
+setupCharacterRespawn()
+
+showNotification("Sistema", "Iniciado! Spawnpoint + Invisible + Visible v1.1")
+print("[Spawnpoint] ✓ Script carregado e pronto para usar!")
+
+-- ═══════════════════════════════════════════════════════════════════
+-- FIM DO SCRIPT
+-- ═══════════════════════════════════════════════════════════════════
+
+--[[
+    COMO USAR:
+    
+    SPAWNPOINT:
+    1. Clique em "Spawnpoint [OFF]" para salvar sua posição (ficará verde)
+    2. Morra ou respawne
+    3. Você será automaticamente teleportado para o ponto salvo
+    4. Clique novamente para desativar
+    
+    INVISIBLE:
+    1. Clique em "Invisible [OFF]" para ficar invisível (ficará verde)
+    2. Seu personagem desaparecerá da vista
+    3. Você será invisível para outros players (localmente)
+    4. Clique em "Visible" para ficar visível novamente
+    
+    VISIBLE:
+    1. Se está invisível, clique em "Visible [OFF]" para ficar visível (ficará verde)
+    2. Seu personagem reaparecerá
+    3. Você voltará ao normal
+    
+    DICAS:
+    - Arraste pela barra azul para mover a GUI
+    - Clique em "−" para minimizar
+    - Clique em "✕" para fechar completamente
+]]
+
